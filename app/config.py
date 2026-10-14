@@ -53,6 +53,15 @@ class Settings(BaseSettings):
         return path if path.is_absolute() else BACKEND_DIR / path
 
     @property
+    def effective_database_url(self) -> str:
+        url = self.database_url.strip()
+        if url.startswith("postgres://"):
+            return "postgresql+psycopg://" + url.removeprefix("postgres://")
+        if url.startswith("postgresql://"):
+            return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+        return url
+
+    @property
     def effective_ai_api_key(self) -> str:
         raw_key = self.groq_api_key or os.getenv("GROQ_API_KEY", "")
         return raw_key.strip().strip('"').strip("'")

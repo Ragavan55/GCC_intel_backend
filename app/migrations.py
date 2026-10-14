@@ -14,6 +14,10 @@ FETCH_ONLY_TABLES = ("api_fetch_logs", "gcc_signals", "macro_indicators")
 
 def migrate_legacy_tables() -> None:
     """Drop fetch-only tables and preserve raw item rows without their source FK."""
+    if engine.dialect.name != "sqlite":
+        logger.info("Skipping legacy SQLite migration for database dialect=%s", engine.dialect.name)
+        return
+
     with engine.connect() as connection:
         connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
         connection.commit()

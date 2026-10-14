@@ -140,6 +140,16 @@ def _combine_rows(results: list[dict[str, Any]], rows: list[dict[str, Any]], key
             break
 
 
+def _display_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, int):
+        return f"{value:,}"
+    if isinstance(value, float):
+        return f"{value:,.2f}".rstrip("0").rstrip(".")
+    return str(value)
+
+
 def _is_greeting(question: str) -> bool:
     normalized = re.sub(r"[^a-z\s]", "", question.casefold()).strip()
     normalized = re.sub(r"^(hi|hello|hey)\s+", "", normalized)
@@ -156,7 +166,7 @@ def _format_database_reply(results: list[dict[str, Any]], intro: str) -> tuple[s
     for row in results:
         label = str(row.get("name") or row.get("company") or row.get("key") or row.get("criterion") or row.get("external_id") or row.get("title") or row.get("role") or row.get("cluster") or "Record")
         details = [
-            f"{key.replace('_', ' ')}: {value}"
+            f"{key.replace('_', ' ')}: {_display_value(value)}"
             for key, value in row.items()
             if key not in {"name", "company", "key", "criterion", "external_id", "title", "source_url", "source", "confidence", "last_verified_at"} and value is not None
         ]
