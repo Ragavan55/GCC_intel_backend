@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -21,6 +22,16 @@ from app.routers.uploads import router as uploads_router
 
 logger = logging.getLogger(__name__)
 
+IS_PRODUCTION = os.getenv("APP_ENV", "development").lower() == "production"
+
+
+def parse_origins(value: str) -> list[str]:
+    """Accepts one origin or a comma-separated list; strips whitespace and trailing slashes."""
+    return [item.strip().rstrip("/") for item in value.split(",") if item.strip()]
+
+
+CORS_ORIGINS = parse_origins(settings.frontend_origin)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -32,15 +43,25 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title=settings.app_name, lifespan=lifespan)
+app = FastAPI(
+    title=settings.app_name,
+    lifespan=lifespan,
+    # Hide API docs in production. Remove these three lines if you want /docs public.
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
+)
+
+# Last added = outermost, so CORS headers are applied to every response.
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(chat_router, prefix=settings.api_prefix)
 app.include_router(uploads_router, prefix=settings.api_prefix)
@@ -84,7 +105,8 @@ async def unexpected_error_handler(_: Request, exception: Exception) -> JSONResp
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"app": settings.app_name, "status": "ok", "docs": "/docs"}
+    docs = "disabled" if IS_PRODUCTION else "/docs"
+    return {"app": settings.app_name, "status": "ok", "docs": docs}
 
 
 @app.get("/health")
